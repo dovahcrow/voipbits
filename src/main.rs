@@ -95,7 +95,7 @@ async fn process(event: Event) -> Option<Value> {
     let opt = Opt::from_args();
     match &event.path[..] {
         "/send" => return Some(send(&opt.private_key, &event).await?),
-        "/notify" => notify(&opt, &event).await?,
+        "/notify" => return Some(notify(&opt, &event).await?),
         "/provision" => return Some(provision(&opt, &event).await?),
         "/report" => report(&opt, &event).await?,
         "/fetch" => return Some(fetch(&opt, &event).await?),
@@ -188,7 +188,7 @@ async fn report(opt: &Opt, event: &Event) {
 }
 
 #[throws(Error)]
-async fn notify(_: &Opt, event: &Event) {
+async fn notify(_: &Opt, event: &Event) -> Value {
     let message = event.get_qs("message")?;
     let did = event.get_qs("to")?;
     let from = event.get_qs("from")?;
@@ -210,6 +210,14 @@ async fn notify(_: &Opt, event: &Event) {
     }
 
     pm.remove_tokens(did, &failed_tokens).await?;
+
+    json!({
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "text/plain"
+        },
+        "body": "ok"
+    })
 }
 
 #[throws(Error)]
