@@ -86,7 +86,7 @@ Self hosting is easy with the help of [serverless](https://www.serverless.com/).
 
 Before running `sls deploy` to actually deploy the code, 
 you need to first create the corresponding DynamoDB table `voipbits-push-tokens` and an IAM role with
-permission to read/write the table. You also need to have a cert setup in ACM if you want to use customer domains.
+permission to read/write the table. You also need to have a cert setup in ACM if you want to use your own domain.
 Otherwise you can just remove the `customDomain` section in `serverless.yml`.
 
 Run `sls deploy` you will get everything deployed.
