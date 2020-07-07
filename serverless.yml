@@ -1,0 +1,44 @@
+service: VoipBits
+provider:
+  name: aws
+  description: "Glues voip.ms with acrobits softphone"
+  region: us-west-2
+  stage: prod
+  runtime: rust
+  memorySize: 128
+  timeout: 30
+  role: ${env:ROLE}
+  environment:
+    RUST_LOG: voipbits=info
+    RUST_BACKTRACE: full
+    PUBLIC_KEY: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCdUvZ6oEQB5KWc0b6iUlBd/oZjspHkWFB8seL2eApnx+iTCFkpGxaGiVOxevBCIQLnAryMexeQd2y5n9Fsw2OIBsDFe9GZe4V2P5FAjtU4rKQOZm2sVr+W+IEq0LuyfBALEU56BoOUFoRQhHPUPWjGqVV3/nvqNcPb9L640X/7DQIDAQAB
+    PRIVATE_KEY: ${env:PRIVATE_KEY}
+    SERVER_URL: https://voipbits.wooya.me
+custom:
+  rust:
+    dockerTag: "0.2.7-rust-1.44.0"
+  customDomain:
+    domainName: voipbits.wooya.me
+    basePath: ''
+    stage: ${self:provider.stage}
+    createRoute53Record: true
+
+package:
+  individually: true
+
+plugins:
+  - serverless-rust
+  - serverless-domain-manager
+
+functions:
+  voipbits:
+    handler: voipbits
+    name: VoipBits
+    description: VoipBits glues voip.ms with acrobits softphone
+    events:
+      - http: POST send
+      - http: POST provision
+      - http: POST fetch
+      - http: POST report
+      - http: GET notify
+      
