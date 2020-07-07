@@ -10,13 +10,13 @@ This service is greatly inspired by [smsglue](https://smsglue.com/), but with so
 
 * VoipBits doesn't store your account information while smsglue does.
 
-  VoipBits requires you send **encrypted** account informations along with each request 
-  to the service so that the only information this service knows about you is the
+  VoipBits requires you send **encrypted** account informations every time a request 
+  is made to the service so that the only information this service stores is the
   push token to your phone, which is for SMS notification.
 
 * VoipBits requires zero fee to deploy while smsglue requires the fee for a server.
 
-  VoipBits make uses of AWS Lambda and DynamoDB which all provides free tiers. In most situations
+  VoipBits makes use of AWS Lambda and DynamoDB which all provide free tiers. In most situations,
   hosting VoipBits on AWS will cost you 0 bucks. However, for smsglue, you need to at least
   pay for a server.
   
