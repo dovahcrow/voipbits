@@ -132,7 +132,11 @@ impl VoipMS {
             })
             .await?;
 
-        let date = match resp.sms.as_slice() {
+        if matches!(resp.sms, None) {
+            return vec![];
+        }
+
+        let date = match resp.sms.unwrap().as_slice() {
             [] => throw!(VoipBitsError::NoSuchSMS(id.into())),
             [sms] => sms.date,
             [..] => unreachable!("Multiple SMS with same ID"),
@@ -159,7 +163,11 @@ impl VoipMS {
                 "timezone" => if is_dst() { "-1" } else { "0" },
             })
             .await?;
-        resp.sms.into_iter().map(|vsms| vsms.to_acrobits_reply()).collect::<Result<_, _>>()?
+        if resp.sms.is_none() {
+            return vec![];
+        }
+
+        resp.sms.unwrap().into_iter().map(|vsms| vsms.to_acrobits_reply()).collect::<Result<_, _>>()?
     }
 
     #[throws(Error)]
@@ -187,7 +195,7 @@ struct VoipSendSMSResponse {
 #[derive(Deserialize, Debug)]
 struct VoipGetSMSResponse {
     status: String,
-    sms: Vec<VoipSMS>,
+    sms: Option<Vec<VoipSMS>>,
 }
 
 #[derive(Deserialize, Debug)]
