@@ -1,31 +1,40 @@
 [package]
+authors = ["Weiyuan Wu <doomsplayer@gmail.com>"]
+autobins = false
+edition = "2018"
 name = "voipbits"
 version = "0.1.0"
-authors = ["Weiyuan Wu <doomsplayer@gmail.com>"]
-edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "bootstrap"
+path = "src/main.rs"
 
 [dependencies]
-lambda = { git = "https://github.com/awslabs/aws-lambda-rust-runtime" }
-tokio = { version = "0.2", features = ["macros", "rt-threaded", "io-util"] }
-serde_json = "1"
-serde = { version = "1", features = ["derive"] }
-chrono = { version = "0.4", features = ["serde"] }
-structopt = { version = "0.3" }
-rusoto_core = "0.44"
-rusoto_dynamodb = "0.44"
-futures = "0.3"
-log = "0.4"
-env_logger = "0.7"
-lazy_static = "1"
+anyhow = "1"
+aws-config = "0.10.1"
+aws-sdk-dynamodb = "0.10.1"
+axum = "0.5"
+base64 = "0.13"
+chrono = {version = "0.4", features = ["serde"]}
+chrono-tz = "0.6"
 fehler = "1"
-thiserror = "1"
-reqwest = { version = "0.10", features = ["json"] }
-failure = "0.1"
+futures = "0.3"
+hyper = "0.14"
+lambda-web = {version = "0.1.9", features = ["hyper"]}
+lambda_runtime = "0.5.1"
 maplit = "1"
+rand = "0.8"
 regex = "1"
-rand = "0.7"
+reqwest = {version = "0.11", features = ["json"]}
 rsa = "0.3"
-base64 = "0.12"
-chrono-tz = "0.5"
+serde = {version = "1", features = ["derive"]}
+serde_json = "1"
+structopt = {version = "0.3"}
+thiserror = "1"
+tokio = {version = "1.17", features = ["full"]}
+tracing = "0.1"
+tracing-subscriber = "0.2"
+
+[patch.crates-io]
+lambda-web = {git = "https://github.com/dovahcrow/lambda-web"}

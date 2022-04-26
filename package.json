@@ -2,7 +2,6 @@
   "name": "voipbits",
   "description": "",
   "version": "0.1.0",
-  "dependencies": {},
   "devDependencies": {
     "serverless-domain-manager": "^4.1.1",
     "serverless-rust": "^0.3.8"

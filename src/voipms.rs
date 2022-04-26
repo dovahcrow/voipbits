@@ -1,26 +1,19 @@
 use crate::errors::VoipBitsError;
 use crate::Opt;
+use anyhow::Error;
 use chrono::{DateTime, Duration, NaiveDateTime, Timelike, Utc};
 use chrono_tz::US::Pacific;
-use failure::Error;
 use fehler::{throw, throws};
-use lazy_static::lazy_static;
-use log::{error, info};
 use maplit::hashmap;
 use regex::Regex;
 use reqwest::Client;
 use rsa::{PaddingScheme, RSAPrivateKey};
-use rusoto_core::Region;
-use rusoto_dynamodb::DynamoDbClient;
 use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use serde_json::{from_str, Value};
 use std::str;
+use tracing::{error, info};
 
 const VOIPMS_URL: &'static str = "https://www.voip.ms/api/v1/rest.php";
-
-lazy_static! {
-    static ref DYNAMO: DynamoDbClient = DynamoDbClient::new(Region::UsWest2);
-}
 
 pub struct VoipMS {
     user: String,
@@ -34,7 +27,10 @@ impl VoipMS {
     pub fn from_cred(priv_key: &str, cred: &str) -> VoipMS {
         let cred = cred.replace(" ", "+");
         let priv_key = RSAPrivateKey::from_pkcs8(&base64::decode(priv_key)?)?;
-        let cred = priv_key.decrypt(PaddingScheme::new_pkcs1v15_encrypt(), &base64::decode(cred)?)?;
+        let cred = priv_key.decrypt(
+            PaddingScheme::new_pkcs1v15_encrypt(),
+            &base64::decode(cred)?,
+        )?;
 
         let cred = String::from_utf8_lossy(&cred);
         let creds: Vec<_> = cred.split(":").collect();
@@ -72,15 +68,16 @@ impl VoipMS {
         let payload = resp.text().await?;
 
         if !status.is_success() {
-            error!("[Voip.ms] Response: ({}) {}", status, payload);
+            error!("Response: ({}) {}", status, payload);
         } else {
-            info!("[Voip.ms] Response: ({}) {}", status, payload);
+            info!("Response: ({}) {}", status, payload);
         }
 
         from_str(&payload)?
     }
 
     #[throws(Error)]
+    #[tracing::instrument(skip(self))]
     pub async fn send_sms(&self, dst: &str, msg: &str) -> Vec<String> {
         // Clean up number and message text
         let re = Regex::new(r"\D").unwrap();
@@ -122,6 +119,7 @@ impl VoipMS {
     }
 
     #[throws(Error)]
+    #[tracing::instrument(skip(self))]
     pub async fn fetch_sms_after_id(&self, id: &str) -> Vec<AcrobitsSMS> {
         let resp: VoipGetSMSResponse = self
             .request(hashmap! {
@@ -147,12 +145,20 @@ impl VoipMS {
     }
 
     #[throws(Error)]
+    #[tracing::instrument(skip(self))]
     pub async fn fetch_sms_from_date(&self, from: Option<DateTime<Utc>>) -> Vec<AcrobitsSMS> {
         // Query voip.ms for received SMS messages ranging from 90 days ago to tomorrow
-        let from = from.unwrap_or_else(|| Utc::now() - Duration::days(90)).format("%Y-%m-%d").to_string();
-        let to = (Utc::now() + Duration::days(1)).format("%Y-%m-%d").to_string();
+        let mut from = from.unwrap_or_else(|| Utc::now() - Duration::days(90));
+        if from < Utc::now() - Duration::days(90) {
+            from = Utc::now() - Duration::days(90)
+        }
+        let from = from.format("%Y-%m-%d").to_string();
 
-        info!("[Voip.ms] Getting SMS from {} to {}", from, to);
+        let to = (Utc::now() + Duration::days(1))
+            .format("%Y-%m-%d")
+            .to_string();
+
+        info!("Getting SMS from {} to {}", from, to);
 
         let resp: VoipGetSMSResponse = self
             .request(hashmap! {
@@ -167,15 +173,21 @@ impl VoipMS {
             return vec![];
         }
 
-        resp.sms.unwrap().into_iter().map(|vsms| vsms.to_acrobits_reply()).collect::<Result<_, _>>()?
+        resp.sms
+            .unwrap()
+            .into_iter()
+            .map(|vsms| vsms.to_acrobits_reply())
+            .collect::<Result<_, _>>()?
     }
 
     #[throws(Error)]
+    #[tracing::instrument(skip(self, opt))]
     pub async fn set_sms_callback(&self, opt: &Opt) {
         let url = opt.notify_url();
 
         let _: Value = self
             .request(hashmap! {
+              "did" => self.did.as_str(),
               "method" => "setSMS",
               "enable" => "1",
               "url_callback_enable" => "1",
@@ -186,18 +198,21 @@ impl VoipMS {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct VoipSendSMSResponse {
     status: String,
     sms: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct VoipGetSMSResponse {
     status: String,
     sms: Option<Vec<VoipSMS>>,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct VoipSMS {
     id: String,
@@ -206,7 +221,7 @@ struct VoipSMS {
     r#type: String,
     did: String,
     contact: String,
-    message: String,
+    message: Option<String>,
 }
 
 #[derive(Serialize, Debug)]
@@ -228,7 +243,7 @@ impl VoipSMS {
             sending_date: self.date,
             sender: None,
             recipient: None,
-            sms_text: self.message.clone(),
+            sms_text: self.message.clone().unwrap_or_else(|| "".into()),
         };
 
         match self.r#type.as_str() {

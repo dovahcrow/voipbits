@@ -16,7 +16,7 @@ provider:
     SERVER_URL: https://voipbits.wooya.me
 custom:
   rust:
-    dockerTag: "0.2.7-rust-1.44.0"
+    dockerTag: "0.3.0-rust-1.45.0"
   customDomain:
     domainName: voipbits.wooya.me
     basePath: ''
